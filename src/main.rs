@@ -23,8 +23,6 @@ impl GameState for State {
 
 impl State {
     fn run_systems(&mut self) {
-        let mut lw = LeftWalker {};
-        lw.run_now(&self.ecs);
         self.ecs.maintain();
     }
 }
@@ -43,25 +41,13 @@ struct Renderable {
 }
 
 #[derive(Component)]
-struct LeftMover {}
-
-struct LeftWalker {}
-
-impl<'a> System<'a> for LeftWalker {
-    type SystemData = (ReadStorage<'a, LeftMover>, WriteStorage<'a, Position>);
-
-    fn run(&mut self, (lefty, mut pos): Self::SystemData) {
-        for (_lefty, pos) in (&lefty, &mut pos).join() {
-            pos.x -= 1;
-            if pos.x < 0 {
-                pos.x = 79;
-            }
-        }
-    }
-}
-
-#[derive(Component)]
 struct Player {}
+
+#[derive(PartialEq, Copy, Clone)]
+enum TileType {
+    Wall,
+    Floor,
+}
 
 fn main() -> rltk::BError {
     use rltk::RltkBuilder;
@@ -75,7 +61,6 @@ fn main() -> rltk::BError {
     gs.ecs.register::<Player>();
     gs.ecs.register::<Position>();
     gs.ecs.register::<Renderable>();
-    gs.ecs.register::<LeftMover>();
 
     // Entity creation
     gs.ecs.create_entity()
@@ -88,19 +73,6 @@ fn main() -> rltk::BError {
         .with(Player {})
         .build();
 
-    for i in 0..10 {
-        gs.ecs
-            .create_entity()
-            .with(Position { x: i * 7, y: 20 })
-            .with(Renderable {
-                glyph: rltk::to_cp437('☺'),
-                fg: RGB::named(rltk::RED),
-                bg: RGB::named(rltk::BLACK),
-            })
-            .with(LeftMover {})
-            .build();
-    }
-
     rltk::main_loop(context, gs)
 }
 
@@ -108,10 +80,10 @@ fn player_input(gs: &mut State, ctx: &mut Rltk) {
     match ctx.key {
         None => {}
         Some(k) => match k {
-            VirtualKeyCode::Left => move_player(-1, 0, &mut gs.ecs),
-            VirtualKeyCode::Right => move_player(1, 0, &mut gs.ecs),
-            VirtualKeyCode::Up => move_player(0, -1, &mut gs.ecs),
-            VirtualKeyCode::Down => move_player(0, 1, &mut gs.ecs),
+            VirtualKeyCode::A => move_player(-1, 0, &mut gs.ecs),
+            VirtualKeyCode::D => move_player(1, 0, &mut gs.ecs),
+            VirtualKeyCode::W => move_player(0, -1, &mut gs.ecs),
+            VirtualKeyCode::S => move_player(0, 1, &mut gs.ecs),
             _ => {}
         },
     }
@@ -125,4 +97,12 @@ fn move_player(delta_x: i32, delty_y: i32, ecs: &mut World) {
         pos.x = min(79, max(0, pos.x + delta_x));
         pos.y = min(49, max(0, pos.y + delty_y));
     }
+}
+
+pub fn xy_idx(x: i32, y: i32) -> usize {
+    (y as usize * 80) + x as usize
+}
+
+fn new_map() -> Vec<TileType> {
+    let mut map = vec![TileType::Floor; 80 * 50];
 }
